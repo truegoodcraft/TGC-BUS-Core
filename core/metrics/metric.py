@@ -37,13 +37,18 @@ def _norm_unit(u: str) -> str:
     return normalized
 
 
+def _norm_dimension(d: str) -> str:
+    d0 = (d or "").strip().lower()
+    return "weight" if d0 == "mass" else d0
+
+
 def allowed_units_for(dimension: str) -> Set[str]:
     """
     Return the set of allowed unit strings for the given dimension (lowercased).
     If the dimension is unknown, return an empty set.
     """
 
-    dim = (dimension or "").lower()
+    dim = _norm_dimension(dimension)
     units = UNIT_MULTIPLIER.get(dim)
     if units is None:
         return set()
@@ -56,7 +61,7 @@ def uom_multiplier(dimension: str, unit: str) -> int:
     Return 0 if the (dimension, unit) pair is invalid.
     """
 
-    dim = (dimension or "").lower()
+    dim = _norm_dimension(dimension)
     units = UNIT_MULTIPLIER.get(dim, {})
     mult = units.get(_norm_unit(unit))
     return mult if mult is not None else 0
@@ -68,7 +73,7 @@ def default_unit_for(dimension: str) -> str:
     Assumes caller passes a known dimension; KeyError is allowed if not.
     """
 
-    return BASE_UNIT_LABEL[dimension]
+    return BASE_UNIT_LABEL[_norm_dimension(dimension)]
 
 
 def to_base_qty(value: int | float | Decimal, *, dimension: str, unit: str) -> int:
@@ -80,10 +85,10 @@ def to_base_qty(value: int | float | Decimal, *, dimension: str, unit: str) -> i
     """
 
     u = _norm_unit(unit)
-    d = (dimension or "").lower()
+    d = _norm_dimension(dimension)
     mult = uom_multiplier(d, u)
     if mult == 0:
-        raise ValueError(f"Unsupported uom '{u}' for dimension '{d}'")
+        raise ValueError(f"Unsupported uom '{u}' for dimension '{dimension}'")
     qty = Decimal(str(value)) * Decimal(mult)
     return int(qty.to_integral_value(rounding=ROUND_HALF_UP))
 
@@ -97,10 +102,10 @@ def from_base_qty(qty_base: int, *, dimension: str, unit: str) -> Decimal:
     """
 
     u = _norm_unit(unit)
-    d = (dimension or "").lower()
+    d = _norm_dimension(dimension)
     mult = uom_multiplier(d, u)
     if mult == 0:
-        raise ValueError(f"Unsupported uom '{u}' for dimension '{d}'")
+        raise ValueError(f"Unsupported uom '{u}' for dimension '{dimension}'")
     return (Decimal(qty_base) / Decimal(mult)).quantize(Decimal("0.01"))
 
 
@@ -113,10 +118,10 @@ def to_base(price_per_unit: Decimal, *, dimension: str, unit: str) -> Decimal:
     """
 
     u = _norm_unit(unit)
-    d = (dimension or "").lower()
+    d = _norm_dimension(dimension)
     mult = uom_multiplier(d, u)
     if mult == 0:
-        raise ValueError(f"Unsupported uom '{u}' for dimension '{d}'")
+        raise ValueError(f"Unsupported uom '{u}' for dimension '{dimension}'")
     return (price_per_unit / Decimal(mult)).quantize(Decimal("0.01"))
 
 
@@ -129,10 +134,10 @@ def _price_from_base(price_per_base: Decimal, *, dimension: str, unit: str) -> D
     """
 
     u = _norm_unit(unit)
-    d = (dimension or "").lower()
+    d = _norm_dimension(dimension)
     mult = uom_multiplier(d, u)
     if mult == 0:
-        raise ValueError(f"Unsupported uom '{u}' for dimension '{d}'")
+        raise ValueError(f"Unsupported uom '{u}' for dimension '{dimension}'")
     return (price_per_base * Decimal(mult)).quantize(Decimal("0.01"))
 
 

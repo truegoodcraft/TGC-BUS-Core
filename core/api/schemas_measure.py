@@ -7,7 +7,7 @@ from typing import Literal
 
 from core.metrics import metric
 
-Dimension = Literal["length", "area", "volume", "weight", "count"]
+Dimension = Literal["length", "area", "volume", "weight", "mass", "count"]
 
 UOM = Literal[
     "mm",
@@ -35,6 +35,13 @@ class QuantityStored(BaseModel):
     qty_stored: int = Field(
         ..., description="Canonical stored quantity (metric ×100 for g/mm/mm2/mm3, plain int for ea)"
     )
+
+    @field_validator("dimension", mode="before")
+    @classmethod
+    def _normalize_dimension(cls, v):
+        if isinstance(v, str) and v.strip().lower() == "mass":
+            return "weight"
+        return v
 
     @field_validator("uom")
     @classmethod

@@ -120,7 +120,7 @@ def to_base(price_per_unit: Decimal, *, dimension: str, unit: str) -> Decimal:
     return (price_per_unit / Decimal(mult)).quantize(Decimal("0.01"))
 
 
-def from_base(price_per_base: Decimal, *, dimension: str, unit: str) -> Decimal:
+def _price_from_base(price_per_base: Decimal, *, dimension: str, unit: str) -> Decimal:
     """
     Convert a price per base unit to price per requested 'unit'.
     - Multiply by multiplier
@@ -134,6 +134,38 @@ def from_base(price_per_base: Decimal, *, dimension: str, unit: str) -> Decimal:
     if mult == 0:
         raise ValueError(f"Unsupported uom '{u}' for dimension '{d}'")
     return (price_per_base * Decimal(mult)).quantize(Decimal("0.01"))
+
+
+def from_base(*args, **kwargs) -> Decimal:
+    """
+    Back-compat adapter that supports two calling conventions:
+
+    1) Quantity form (legacy positional):
+       from_base(qty_base: int, unit: str, dimension: str) -> Decimal
+       - Returns display quantity in the requested unit (uses from_base_qty).
+       - Raises ValueError("Unsupported uom '{u}' for dimension '{d}'") on invalid pair.
+
+    2) Price form (keyword-only, new API):
+       from_base(price_per_base: Decimal, *, dimension: str, unit: str) -> Decimal
+       - Returns price per requested unit (uses _price_from_base).
+       - Raises ValueError("Unsupported uom '{u}' for dimension '{d}'") on invalid pair.
+
+    No other calling styles are allowed.
+    """
+
+    if len(args) == 3 and not kwargs:
+        qty_base, unit, dimension = args
+        if not isinstance(qty_base, int):
+            qty_base = int(qty_base)
+        return from_base_qty(qty_base, dimension=dimension, unit=unit)
+    if (
+        len(args) == 0
+        and "price_per_base" in kwargs
+        and "dimension" in kwargs
+        and "unit" in kwargs
+    ):
+        return _price_from_base(**kwargs)
+    raise TypeError("from_base() unsupported call signature")
 
 
 __all__ = [
